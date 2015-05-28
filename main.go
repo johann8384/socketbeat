@@ -1,7 +1,6 @@
 package main
 
 import (
-    "fmt"
     "os"
     "github.com/op/go-logging"
 )
@@ -28,7 +27,7 @@ func (p Password) Redacted() interface{} {
 func main() {
 
 
-     event_chan := make(chan *SocketEvent, 16)
+    event_chan := make(chan *SocketEvent, 16)
 
     // For demo purposes, create two backend for os.Stderr.
     backend1 := logging.NewLogBackend(os.Stderr, "", 0)
@@ -54,7 +53,9 @@ func main() {
 //    log.Critical("crit")
 
       listener := Listener{Port: PORT}
-      go listener.listen(event_chan)
-      event := <-event_chan
-      fmt.Println(event)
+      go listener.Listen(event_chan)
+      for {
+          event := <-event_chan
+          event.Print()
+      }
 }
