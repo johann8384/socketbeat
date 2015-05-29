@@ -14,7 +14,7 @@ type SocketEvent struct {
 
 func (event *SocketEvent) Print() {
   writeKV("source", *event.Source)
-  writeKV("offest", strconv.FormatInt(event.Offset, 10))
+  writeKV("offset", strconv.FormatInt(event.Offset, 10))
   writeKV("line", *event.Text)
   for k, v := range *event.Fields {
     writeKV(k, v)

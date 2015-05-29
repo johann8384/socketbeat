@@ -1,17 +1,11 @@
 package stdout
 
 import (
-  "encoding/json"
-  "fmt"
-  "os"
-  "path/filepath"
-  "strconv"
-  "strings"
   "time"
 
   "github.com/elastic/libbeat/common"
   "github.com/elastic/libbeat/logp"
-  "github.com/elastic/libbeat/outputs"
+  "github.com/johann8384/libbeat/outputs"
 )
 
 type StdOutput struct {
@@ -35,17 +29,18 @@ func (out *StdOutput) GetNameByIP(ip string) string {
 }
 
 func (out *StdOutput) PublishEvent(ts time.Time, event common.MapStr) error {
+  //json_event, err := json.Marshal(event)
+  //if err != nil {
+  //  logp.Err("Fail to convert the event to JSON: %s", err)
+  //  return err
+  //}
 
-  json_event, err := json.Marshal(event)
-  if err != nil {
-    logp.Err("Fail to convert the event to JSON: %s", err)
-    return err
-  }
-
-  err = fmt.printf("%s", json_event)
-  if err != nil {
-    return err
-  }
-
+  out.Print(event)
   return nil
+}
+
+func (out *StdOutput) Print(event common.MapStr) {
+  for key, value := range event {
+    logp.Debug("kv: %s %s\n", key, value)
+  }
 }

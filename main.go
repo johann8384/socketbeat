@@ -16,7 +16,6 @@ import (
   "github.com/elastic/libbeat/filters/nop"
   "github.com/elastic/libbeat/logp"
   "github.com/elastic/libbeat/publisher"
-  "./outputs"
 )
  
 const PORT = 3540
@@ -120,8 +119,6 @@ func main() {
   go listener.Listen(publisher.Publisher.Queue)
   for {
     event := <-afterInputsQueue
-    for k, v := range event {
-      logp.Debug("k:%s, v:%s", k, v)
-    }
+    logp.Info("Event: %v", event)
   }
 }
