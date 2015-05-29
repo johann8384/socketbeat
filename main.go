@@ -118,8 +118,10 @@ func main() {
     logp.SetToStderr(false)
   }
 
-  listener := Listener{Port: PORT, Type: "tcollector"}
-  go listener.Listen(publisher.Publisher.Queue)
+  executor := Executor{Command: "./fake.sh", Type: "exectutor"}
+  go executor.Execute(publisher.Publisher.Queue)
+// listener := Listener{Port: PORT, Type: "tcollector"}
+//  go listener.Listen(publisher.Publisher.Queue)
   for {
     event := <-afterInputsQueue
     logp.Info("Event: %v", event)
