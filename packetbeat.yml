@@ -73,7 +73,9 @@ protocols:
     ports: [9090]
 
 ############################# Output ############################################
-
+shipper:
+  stdout:
+    enabled: true
 # Configure what outputs to use when sending the data collected by packetbeat.
 # You can enable one or multiple outputs by setting enabled option to true.
 output:
@@ -85,7 +87,7 @@ output:
   # host, port: where Elasticsearch is listening on
   # save_topology: specify if the topology is saved in Elasticsearch
   elasticsearch:
-    enabled: false
+    enabled: true
     host: localhost
     port: 9200
     save_topology: true
@@ -106,12 +108,12 @@ output:
   # filename: name of the files
   # rotate_every_kb: maximum size of the files in path
   # number of files: maximum number of files in path
-  #file:
-  #  enabled: true
-  #  path: "/tmp/packetbeat"
-  #  filename: packetbeat
-  #  rotate_every_kb: 1000
-  #  number_of_files: 7
+  file:
+    enabled: false
+    path: "/tmp/packetbeat"
+    filename: packetbeat
+    rotate_every_kb: 1000
+    number_of_files: 7
 
 ############################# Processes ############################################
 

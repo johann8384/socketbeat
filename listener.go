@@ -7,12 +7,13 @@ import (
   "strconv"
   "io"
   "time"
-  "github.com/johann8384/libbeat/common"
-  "github.com/johann8384/libbeat/logp"
+  "github.com/elastic/libbeat/common"
+  "github.com/elastic/libbeat/logp"
 )
 
 type Listener struct {
   Port       int /* the port to listen on */
+  Type       string /* the type to add to events */
 }
 
 func (l *Listener) Listen(output chan common.MapStr) {
@@ -53,6 +54,13 @@ func (l *Listener) handleConn(client net.Conn, output chan common.MapStr) {
     var line uint64 = 0
     var read_timeout = 10 * time.Second
 
+
+    now := func() time.Time {
+      t := time.Now()
+      return t
+      //return t.Format(time.RFC3339)
+    }
+
     for {
         text, bytesread, err := l.readline(reader, buffer, read_timeout)
 
@@ -66,9 +74,12 @@ func (l *Listener) handleConn(client net.Conn, output chan common.MapStr) {
         line++
         event := common.MapStr{}
         event["source"] = &source
-        event["Offset"] = offset
-        event["Line"] = line
-        event["Text"] = text
+        event["offset"] = offset
+        event["line"] = line
+        event["message"] = text
+        event["type"] = l.Type
+        event.EnsureTimestampField(now)
+        event.EnsureCountField()
 
         offset += int64(bytesread)
 

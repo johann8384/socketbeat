@@ -4,18 +4,16 @@ import (
   "flag"
   "fmt"
   "io/ioutil"
-  "log"
   "os"
   "strings"
-
   "gopkg.in/yaml.v2"
 
   "github.com/elastic/packetbeat/config"
-  "github.com/johann8384/libbeat/common"
-  "github.com/johann8384/libbeat/filters"
-  "github.com/johann8384/libbeat/filters/nop"
-  "github.com/johann8384/libbeat/logp"
-  "github.com/johann8384/libbeat/publisher"
+  "github.com/elastic/libbeat/common"
+  "github.com/elastic/libbeat/filters"
+  "github.com/elastic/libbeat/filters/nop"
+  "github.com/elastic/libbeat/logp"
+  "github.com/elastic/libbeat/publisher"
 )
  
 const PORT = 3540
@@ -65,10 +63,10 @@ func main() {
   }
   logp.LogInit(logp.Priority(logLevel), "", !*toStderr, true, debugSelectors)
 
-  if !logp.IsDebug("stdlog") {
+//  if !logp.IsDebug("stdlog") {
     // disable standard logging by default
-    log.SetOutput(ioutil.Discard)
-  }
+//    log.SetOutput(ioutil.Discard)
+//  }
 
   //event_chan := make(chan *SocketEvent, 16)
 
@@ -115,7 +113,7 @@ func main() {
     logp.SetToStderr(false)
   }
 
-  listener := Listener{Port: PORT}
+  listener := Listener{Port: PORT, Type: "tcollector"}
   go listener.Listen(publisher.Publisher.Queue)
   for {
     event := <-afterInputsQueue
