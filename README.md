@@ -11,6 +11,8 @@ Currently I have very rough code which accepts TCP connections and ships off the
 
 The next steps are to implement something similar to the Prospector/Harvester model like logstash-forwarder users. A prospector will execute commands as configured at various time intervals (like TCollector does). The harvester will contain the running script and will log errors from it's stderr and pass lines from it's stdout to the event channel.
 
+I've made a start on this with the listener.go and executor.go files, they should be the first two harvestors. Listener will listen for TCP connections and will ship each line as an event, the Executor will execute a command and ship each line of stdout as an event. The intention is for the Executor to be able to replace [TCollector](https://github.com/opentsdb/tcollector). I intend for a prospector to be able to read folders name as numbers (0, 15, 30, 60, etc) and execute the executable scripts within those folders on intervals based on their name using Executors. You can see this in the adding_filter_plugins branch. The filter doesn't work there yet, but the Executor does.
+
 From there I would want to move the parsing logic to a filter and make it configurable to read Graphite, OpenTSDB and other formats and send standardized events with "message" being the original line and fields added as appropriate based on what format it is parsing.
 
 Here is one OpenTSDB line parsed with the current code:
