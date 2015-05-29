@@ -64,12 +64,11 @@ func (l *Listener) handleConn(client net.Conn, output chan common.MapStr) {
 //        log.Debug("debug %s", text)
 
         line++
-        event := &SocketEvent{
-          Source:   &source,
-          Offset:   offset,
-          Line:     line,
-          Text:     text,
-        }
+        event := common.MapStr{}
+        event["source"] = &source
+        event["Offset"] = offset
+        event["Line"] = line
+        event["Text"] = text
 
         offset += int64(bytesread)
 

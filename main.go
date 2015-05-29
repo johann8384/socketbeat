@@ -16,6 +16,7 @@ import (
   "github.com/elastic/libbeat/filters/nop"
   "github.com/elastic/libbeat/logp"
   "github.com/elastic/libbeat/publisher"
+  "github.com/johann8384/socketbeat/outputs/stdout"
 )
  
 const PORT = 3540
@@ -31,7 +32,7 @@ func main() {
 
   verbose := cmdLine.Bool("v", false, "Log at INFO level")
   toStderr := cmdLine.Bool("e", false, "Output to stdout instead of syslog")
-  configfile := cmdLine.String("c", "/etc/packetbeat/packetbeat.yml", "Configuration file")
+  configfile := cmdLine.String("c", "./packetbeat.yml", "Configuration file")
   publishDisabled := cmdLine.Bool("N", false, "Disable actual publishing for testing")
   debugSelectorsStr := cmdLine.String("d", "", "Enable certain debug selectors")
   cmdLine.Parse(os.Args[1:])
@@ -102,7 +103,6 @@ func main() {
       if err != nil {
         logp.Critical("Filters runner failed: %v", err)
         // shutting doen
-        sniff.Stop()
       }
     }()
     afterInputsQueue = runner.FiltersQueue
@@ -118,8 +118,10 @@ func main() {
 
   listener := Listener{Port: PORT}
   go listener.Listen(publisher.Publisher.Queue)
- //for {
- //  event := <-event_chan
- //  event.Print()
- //}
+  for {
+    event := <-afterInputsQueue
+    for k, v := range event {
+      logp.Debug("k:%s, v:%s", k, v)
+    }
+  }
 }
