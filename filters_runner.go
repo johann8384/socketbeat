@@ -2,9 +2,9 @@ package main
 
 import (
   "fmt"
+  "filters"
 
   "github.com/elastic/libbeat/common"
-  "github.com/elastic/libbeat/filters"
   "github.com/elastic/libbeat/logp"
 )
 
@@ -52,7 +52,7 @@ func NewFilterRunner(results chan common.MapStr, order []filters.FilterPlugin) *
 func LoadConfiguredFilters(config map[string]interface{}) ([]filters.FilterPlugin, error) {
   var err error
   plugins := []filters.FilterPlugin{}
-
+  logp.Info("Filters Config: %v", config)
   filters_list, exists := config["filters"]
   if !exists {
     return plugins, nil

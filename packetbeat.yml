@@ -72,6 +72,9 @@ protocols:
     # Redis protocol by commenting the list of ports.
     ports: [9090]
 
+filters:
+  OpenTSDBFilter:
+    enabled: true
 ############################# Output ############################################
 shipper:
   stdout:

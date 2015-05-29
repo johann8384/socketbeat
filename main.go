@@ -1,3 +1,4 @@
+
 package main
 
 import (
@@ -7,11 +8,10 @@ import (
   "os"
   "strings"
   "gopkg.in/yaml.v2"
-
+  "filters/opentsdb"
+  "filters"
   "github.com/elastic/packetbeat/config"
   "github.com/elastic/libbeat/common"
-  "github.com/elastic/libbeat/filters"
-  "github.com/elastic/libbeat/filters/nop"
   "github.com/elastic/libbeat/logp"
   "github.com/elastic/libbeat/publisher"
 )
@@ -19,7 +19,7 @@ import (
 const PORT = 3540
  
 var EnabledFilterPlugins map[filters.Filter]filters.FilterPlugin = map[filters.Filter]filters.FilterPlugin{
-  filters.NopFilter: new(nop.Nop),
+  filters.OpenTSDBFilter: new(opentsdb.OpenTSDB),
 }
 
 func main() {
@@ -81,18 +81,22 @@ func main() {
     os.Exit(1)
   }
 
-  logp.Debug("main", "Initializing filters plugins")
+  logp.Info("Initializing filters plugins: %v", EnabledFilterPlugins)
   for filter, plugin := range EnabledFilterPlugins {
+    logp.Info("Plugin Registered: %s", filter)
     filters.Filters.Register(filter, plugin)
   }
+  logp.Info("Filter Config: %v", config.ConfigSingleton.Filter)
   filters_plugins, err :=
     LoadConfiguredFilters(config.ConfigSingleton.Filter)
   if err != nil {
     logp.Critical("Error loading filters plugins: %v", err)
     os.Exit(1)
   }
-  logp.Debug("main", "Filters plugins order: %v", filters_plugins)
+  logp.Info("Filters plugins order: %v", filters_plugins)
+
   var afterInputsQueue chan common.MapStr
+
   if len(filters_plugins) > 0 {
     runner := NewFilterRunner(publisher.Publisher.Queue, filters_plugins)
     go func() {
@@ -104,6 +108,7 @@ func main() {
     }()
     afterInputsQueue = runner.FiltersQueue
   } else {
+    logp.Info("Short-circuit the filter runner")
     // short-circuit the runner
     afterInputsQueue = publisher.Publisher.Queue
   }
