@@ -6,10 +6,37 @@ import (
   "bytes"
   "strconv"
   "io"
+  "regexp"
   "time"
+  "strings"
   "github.com/elastic/libbeat/common"
   "github.com/elastic/libbeat/logp"
 )
+
+type TSDBMetricExp struct {
+  *regexp.Regexp
+}
+
+var metricExp = TSDBMetricExp{regexp.MustCompile(`^put (?P<metric_name>[\w.]+)[\s]+(?P<metric_timestamp>[0-9]+)[\s]+(?P<metric_value>[0-9.]+)[\s]+(?P<metric_tags>.*$)`)}
+
+func (r *TSDBMetricExp) FindStringSubmatchMap(s string) map[string]string {
+  captures := make(map[string]string)
+
+  match := r.FindStringSubmatch(s)
+  if match == nil {
+    return captures
+  }
+
+  for i, name := range r.SubexpNames() {
+    if i == 0 {
+      continue
+    }
+    captures[name] = match[i]
+
+  }
+  return captures
+}
+
 
 type Listener struct {
   Port       int /* the port to listen on */
@@ -65,26 +92,41 @@ func (l *Listener) handleConn(client net.Conn, output chan common.MapStr) {
         text, bytesread, err := l.readline(reader, buffer, read_timeout)
 
         if err != nil {
-          //emit("Unexpected state reading from %v; error: %s\n", client.RemoteAddr().String, err)
+          logp.Info("Unexpected state reading from %v; error: %s\n", client.RemoteAddr().String, err)
           return
         }
 
-//        log.Debug("debug %s", text)
+        metric_data := metricExp.FindStringSubmatchMap(*text)
+        parsed_tags := strings.Fields(metric_data["metric_tags"])
+        tags := make(map[string]string)
+
+        for  _,v := range parsed_tags {
+          tag := strings.Split(v, "=")
+          tags[tag[0]] = tag[1]
+        }
 
         line++
+
         event := common.MapStr{}
         event["source"] = &source
         event["offset"] = offset
         event["line"] = line
         event["message"] = text
         event["type"] = l.Type
+        event["metric_name"] = metric_data["metric_name"]
+        event["metric_value"] = metric_data["metric_value"]
+        event["metric_timestamp"] = metric_data["metric_timestamp"]
+        event["metric_tags"] = metric_data["metric_tags"]
+        event["metric_tags_map"] = tags
+
         event.EnsureTimestampField(now)
         event.EnsureCountField()
 
         offset += int64(bytesread)
 
+
         output <- event // ship the new event downstream
-        client.Write([]byte("test"))
+        client.Write([]byte("OK"))
     }
 }
 
