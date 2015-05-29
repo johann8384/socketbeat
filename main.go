@@ -11,11 +11,11 @@ import (
   "gopkg.in/yaml.v2"
 
   "github.com/elastic/packetbeat/config"
-  "github.com/elastic/libbeat/common"
-  "github.com/elastic/libbeat/filters"
-  "github.com/elastic/libbeat/filters/nop"
-  "github.com/elastic/libbeat/logp"
-  "github.com/elastic/libbeat/publisher"
+  "github.com/johann8384/libbeat/common"
+  "github.com/johann8384/libbeat/filters"
+  "github.com/johann8384/libbeat/filters/nop"
+  "github.com/johann8384/libbeat/logp"
+  "github.com/johann8384/libbeat/publisher"
 )
  
 const PORT = 3540

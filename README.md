@@ -7,4 +7,4 @@ I am probably going to rename this to MetricsBeat and then start heading down th
 
 Having [harvesters](https://github.com/elastic/logstash-forwarder/blob/master/harvester.go|harvesters) that execute scripts (like TCollector and it's Collectors) then use the standard libbeat logic to ship the lines of output as events would be valuable. 
 
-For my needs I'll need to add a Kafka output to the [outputs](https://github.com/elastic/libbeat).
+For my needs I'll need to add a Kafka output to the [outputs](https://github.com/johann8384/libbeat).
