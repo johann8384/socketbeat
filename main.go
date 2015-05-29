@@ -16,7 +16,7 @@ import (
   "github.com/elastic/libbeat/filters/nop"
   "github.com/elastic/libbeat/logp"
   "github.com/elastic/libbeat/publisher"
-  "github.com/johann8384/socketbeat/outputs/stdout"
+  "./outputs"
 )
  
 const PORT = 3540

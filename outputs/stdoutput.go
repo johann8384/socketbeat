@@ -14,23 +14,27 @@ import (
   "github.com/elastic/libbeat/outputs"
 )
 
+type StdOutput struct {
+  enabled string
+}
 
-func (out *FileOutput) Init(config outputs.MothershipConfig, topology_expire int) error {
+
+func (out *StdOutput) Init(config outputs.MothershipConfig, topology_expire int) error {
   // not supported by this output type
   return nil
 }
 
-func (out *FileOutput) PublishIPs(name string, localAddrs []string) error {
+func (out *StdOutput) PublishIPs(name string, localAddrs []string) error {
   // not supported by this output type
   return nil
 }
 
-func (out *FileOutput) GetNameByIP(ip string) string {
+func (out *StdOutput) GetNameByIP(ip string) string {
   // not supported by this output type
   return ""
 }
 
-func (out *FileOutput) PublishEvent(ts time.Time, event common.MapStr) error {
+func (out *StdOutput) PublishEvent(ts time.Time, event common.MapStr) error {
 
   json_event, err := json.Marshal(event)
   if err != nil {
