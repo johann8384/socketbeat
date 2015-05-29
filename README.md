@@ -38,3 +38,4 @@ Here is one OpenTSDB line parsed with the current code:
   type: "tcollector"
 }
 ```
+This uses code from Packetbeat and from Logstash-Forwarder. It is no where near even an initial release. It's just really rough PoC code.
