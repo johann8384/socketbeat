@@ -1,61 +1,125 @@
 package main
 
 import (
-    "os"
-    "github.com/op/go-logging"
+  "flag"
+  "fmt"
+  "io/ioutil"
+  "log"
+  "os"
+  "strings"
+
+  "gopkg.in/yaml.v2"
+
+  "github.com/elastic/packetbeat/config"
+  "github.com/elastic/libbeat/common"
+  "github.com/elastic/libbeat/filters"
+  "github.com/elastic/libbeat/filters/nop"
+  "github.com/elastic/libbeat/logp"
+  "github.com/elastic/libbeat/publisher"
 )
  
 const PORT = 3540
  
-var log = logging.MustGetLogger("example")
-
-// Example format string. Everything except the message has a custom color
-// which is dependent on the log level. Many fields have a custom output
-// formatting too, eg. the time returns the hour down to the milli second.
-var format = logging.MustStringFormatter(
-    "%{color}%{time:15:04:05.000} %{shortfunc} ▶ %{level:.4s} %{id:03x}%{color:reset} %{message}",
-)
-
-// Password is just an example type implementing the Redactor interface. Any
-// time this is logged, the Redacted() function will be called.
-type Password string
-
-func (p Password) Redacted() interface{} {
-    return logging.Redact(string(p))
+var EnabledFilterPlugins map[filters.Filter]filters.FilterPlugin = map[filters.Filter]filters.FilterPlugin{
+  filters.NopFilter: new(nop.Nop),
 }
 
 func main() {
 
+  // Use our own FlagSet, because some libraries pollute the global one
+  var cmdLine = flag.NewFlagSet(os.Args[0], flag.ExitOnError)
 
-    event_chan := make(chan *SocketEvent, 16)
+  verbose := cmdLine.Bool("v", false, "Log at INFO level")
+  toStderr := cmdLine.Bool("e", false, "Output to stdout instead of syslog")
+  configfile := cmdLine.String("c", "/etc/packetbeat/packetbeat.yml", "Configuration file")
+  publishDisabled := cmdLine.Bool("N", false, "Disable actual publishing for testing")
+  debugSelectorsStr := cmdLine.String("d", "", "Enable certain debug selectors")
+  cmdLine.Parse(os.Args[1:])
 
-    // For demo purposes, create two backend for os.Stderr.
-    backend1 := logging.NewLogBackend(os.Stderr, "", 0)
-    backend2 := logging.NewLogBackend(os.Stderr, "", 0)
+  logLevel := logp.LOG_ERR
 
-    // For messages written to backend2 we want to add some additional
-    // information to the output, including the used log level and the name of
-    // the function.
-    backend2Formatter := logging.NewBackendFormatter(backend2, format)
+  if *verbose {
+    logLevel = logp.LOG_INFO
+  }
 
-    // Only errors and more severe messages should be sent to backend1
-    backend1Leveled := logging.AddModuleLevel(backend1)
-    backend1Leveled.SetLevel(logging.ERROR, "")
+  var err error
 
-    // Set the backends to be used.
-    logging.SetBackend(backend1Leveled, backend2Formatter)
+  filecontent, err := ioutil.ReadFile(*configfile)
+  if err != nil {
+    fmt.Printf("Fail to read %s: %s. Exiting.\n", *configfile, err)
+    return
+  }
+  if err = yaml.Unmarshal(filecontent, &config.ConfigSingleton); err != nil {
+    fmt.Printf("YAML config parsing failed on %s: %s. Exiting.\n", *configfile, err)
+    return
+  }
 
-//    log.Debug("debug %s", Password("secret"))
-    log.Info("Listening: %d", PORT)
-//    log.Notice("notice")
-//    log.Warning("warning")
-//    log.Error("err")
-//    log.Critical("crit")
+  debugSelectors := []string{}
+  if len(*debugSelectorsStr) > 0 {
+    debugSelectors = strings.Split(*debugSelectorsStr, ",")
+    logLevel = logp.LOG_DEBUG
+  }
 
-      listener := Listener{Port: PORT}
-      go listener.Listen(event_chan)
-      for {
-          event := <-event_chan
-          event.Print()
+  if len(debugSelectors) == 0 {
+    debugSelectors = config.ConfigSingleton.Logging.Selectors
+  }
+  logp.LogInit(logp.Priority(logLevel), "", !*toStderr, true, debugSelectors)
+
+  if !logp.IsDebug("stdlog") {
+    // disable standard logging by default
+    log.SetOutput(ioutil.Discard)
+  }
+
+  //event_chan := make(chan *SocketEvent, 16)
+
+  logp.Info("Listening: %d", PORT)
+
+  logp.Debug("main", "Configuration %s", config.ConfigSingleton)
+  logp.Debug("main", "Initializing output plugins")
+  if err = publisher.Publisher.Init(*publishDisabled, config.ConfigSingleton.Output,
+    config.ConfigSingleton.Shipper); err != nil {
+
+    logp.Critical(err.Error())
+    os.Exit(1)
+  }
+
+  logp.Debug("main", "Initializing filters plugins")
+  for filter, plugin := range EnabledFilterPlugins {
+    filters.Filters.Register(filter, plugin)
+  }
+  filters_plugins, err :=
+    LoadConfiguredFilters(config.ConfigSingleton.Filter)
+  if err != nil {
+    logp.Critical("Error loading filters plugins: %v", err)
+    os.Exit(1)
+  }
+  logp.Debug("main", "Filters plugins order: %v", filters_plugins)
+  var afterInputsQueue chan common.MapStr
+  if len(filters_plugins) > 0 {
+    runner := NewFilterRunner(publisher.Publisher.Queue, filters_plugins)
+    go func() {
+      err := runner.Run()
+      if err != nil {
+        logp.Critical("Filters runner failed: %v", err)
+        // shutting doen
+        sniff.Stop()
       }
+    }()
+    afterInputsQueue = runner.FiltersQueue
+  } else {
+    // short-circuit the runner
+    afterInputsQueue = publisher.Publisher.Queue
+  }
+
+  if !*toStderr {
+    logp.Info("Startup successful, sending output only to syslog from now on")
+    logp.SetToStderr(false)
+  }
+
+  listener := Listener{Port: PORT}
+  go listener.Listen(publisher.Publisher.Queue)
+ //for {
+ //  event := <-event_chan
+ //  event.Print()
+ //}
 }

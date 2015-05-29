@@ -1,20 +1,21 @@
 package main
 
 import (
-    "net"
-    "bufio"
-    "bytes"
-    "strconv"
-    "fmt"
-    "io"
-    "time"
+  "net"
+  "bufio"
+  "bytes"
+  "strconv"
+  "io"
+  "time"
+  "github.com/elastic/libbeat/common"
+  "github.com/elastic/libbeat/logp"
 )
 
 type Listener struct {
   Port       int /* the port to listen on */
 }
 
-func (l *Listener) Listen(output chan *SocketEvent) {
+func (l *Listener) Listen(output chan common.MapStr) {
   server, err := net.Listen("tcp", ":" + strconv.Itoa(l.Port))
   if server == nil {
       panic("couldn't start listening: " + err.Error())
@@ -32,18 +33,18 @@ func clientConns(listener net.Listener) chan net.Conn {
         for {
             client, err := listener.Accept()
             if client == nil {
-                fmt.Printf("couldn't accept: " + err.Error())
+                logp.Info("couldn't accept: " + err.Error())
                 continue
             }
             i++
-            fmt.Printf("%d: %v <-> %v\n", i, client.LocalAddr(), client.RemoteAddr())
+            logp.Info("%d: %v <-> %v\n", i, client.LocalAddr(), client.RemoteAddr())
             ch <- client
         }
     }()
     return ch
 }
 
-func (l *Listener) handleConn(client net.Conn, output chan *SocketEvent) {
+func (l *Listener) handleConn(client net.Conn, output chan common.MapStr) {
     reader := bufio.NewReader(client)
     buffer := new(bytes.Buffer)
 
