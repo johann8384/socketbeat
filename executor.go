@@ -4,10 +4,10 @@ import (
   "os"
   "os/exec"
   "io"
-  "fmt"
   "bytes"
   "bufio"
   "time"
+  "encoding/json"
   "github.com/elastic/libbeat/common"
   "github.com/elastic/libbeat/logp"
 )
@@ -15,12 +15,12 @@ import (
 type Executor struct {
   Command   string /* the command to be run */
   Type      string /* the type to add to events */
-  CommandTimeout uint64 /* The number of seconds to allow the command to run */
-  ReadInterval uint64 /* The number of seconds to check the command output buffer */
-  ReadTimeout uint64 /* The amount of time to ry and read command output */
+  CommandTimeout time.Duration /* The amount of time to allow the command to run */
+  ReadInterval time.Duration /* The amount of time to check the command output buffer */
+  ReadTimeout time.Duration /* The amount of time to try and read command output */
 }
 
-func (e *Executor) Execute(output chan common.MapStr) {
+func (e *Executor) Execute(output chan common.MapStr) (error) {
   logp.Info("Preparing to start %s", e.Command)
 
   cmd := exec.Command(e.Command)
@@ -29,18 +29,20 @@ func (e *Executor) Execute(output chan common.MapStr) {
 
   // Execute the Command
   err := cmd.Start()
-  logp.Err("Could not start: %s", err)
+  if err != nil {
+    logp.Err("Could not start %s: %s", e.Command, err)
+  }
 
   // Process the process output at every ReadInterval
-  ticker := time.NewTicker(e.ReadInterval * time.Second)
+  ticker := time.NewTicker(e.ReadInterval)
   go func(ticker *time.Ticker, command string, event_type string, stdoutbuffer *bytes.Buffer, output chan common.MapStr, ReadTimeout time.Duration) {
     for _ = range ticker.C {
       processOutput(ticker, command, event_type, stdoutbuffer, output, ReadTimeout)
     }
-  }(ticker, e.Command, e.Type, stdoutbuffer, output, e.ReadTimeout * time.Second)
+  }(ticker, e.Command, e.Type, stdoutbuffer, output, e.ReadTimeout)
 
   // Kill the process after it has run for CommandTimeout
-  timer := time.NewTimer(e.CommandTimeout * time.Second)
+  timer := time.NewTimer(e.CommandTimeout)
   go func(timer *time.Timer, ticker *time.Ticker, cmd *exec.Cmd) {
     for _ = range timer.C {
       killCommand(timer, ticker, cmd)
@@ -49,7 +51,8 @@ func (e *Executor) Execute(output chan common.MapStr) {
 
   // Only proceed once the process has finished
   cmd.Wait()
-  logp.Info("Command %s has ended", command)
+  logp.Info("Command %s has ended", e.Command)
+  return nil
 }
 
 func killCommand (timer *time.Timer, ticker *time.Ticker, cmd *exec.Cmd) {
@@ -98,10 +101,11 @@ func processOutput (ticker *time.Ticker, command string, event_type string, stdo
     event.EnsureCountField()
 
     offset += int64(bytesread)
-
+    jsonEvent, err := json.Marshal(&event)
+    if err == nil {
+      logp.Debug("Event is: %s", string(jsonEvent))
+    }
     output <- event // ship the new event downstream
-
-    logp.Info("\nOutput:\nBytes Read: %v\n%s", bytesread, *text)
   }
 }
 
@@ -143,7 +147,7 @@ func readline(reader *bufio.Reader, buffer *bytes.Buffer, eof_timeout time.Durat
         }
         continue
       } else {
-        logp.Error("Executor.readLine: %s", err.Error())
+        logp.Err("Executor.readLine: %s", err.Error())
         return nil, 0, err // TODO(sissel): don't do this?
       }
     }

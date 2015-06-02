@@ -1,4 +1,3 @@
-
 package main
 
 import (
@@ -10,14 +9,18 @@ import (
   "gopkg.in/yaml.v2"
   "filters/opentsdb"
   "filters"
+  "time"
   "github.com/elastic/packetbeat/config"
   "github.com/elastic/libbeat/common"
   "github.com/elastic/libbeat/logp"
   "github.com/elastic/libbeat/publisher"
 )
- 
+
 const PORT = 3540
- 
+const CommandTimeout = 15
+const ReadInterval = 500
+const ReadTimeout = 1
+
 var EnabledFilterPlugins map[filters.Filter]filters.FilterPlugin = map[filters.Filter]filters.FilterPlugin{
   filters.OpenTSDBFilter: new(opentsdb.OpenTSDB),
 }
@@ -63,17 +66,10 @@ func main() {
   }
   logp.LogInit(logp.Priority(logLevel), "", !*toStderr, true, debugSelectors)
 
-//  if !logp.IsDebug("stdlog") {
-    // disable standard logging by default
-//    log.SetOutput(ioutil.Discard)
-//  }
-
-  //event_chan := make(chan *SocketEvent, 16)
-
   logp.Info("Listening: %d", PORT)
 
   logp.Debug("main", "Configuration %s", config.ConfigSingleton)
-  logp.Debug("main", "Initializing output plugins")
+  logp.Info("main", "Initializing output plugins")
   if err = publisher.Publisher.Init(*publishDisabled, config.ConfigSingleton.Output,
     config.ConfigSingleton.Shipper); err != nil {
 
@@ -86,14 +82,14 @@ func main() {
     logp.Info("Plugin Registered: %s", filter)
     filters.Filters.Register(filter, plugin)
   }
-  logp.Info("Filter Config: %v", config.ConfigSingleton.Filter)
+//  logp.Debug("Filter Config: %v", config.ConfigSingleton.Filter)
   filters_plugins, err :=
     LoadConfiguredFilters(config.ConfigSingleton.Filter)
   if err != nil {
-    logp.Critical("Error loading filters plugins: %v", err)
+    logp.Err("Error loading filters plugins: %v", err)
     os.Exit(1)
   }
-  logp.Info("Filters plugins order: %v", filters_plugins)
+  //logp.Debug("Filters plugins order: %v", filters_plugins)
 
   var afterInputsQueue chan common.MapStr
 
@@ -102,7 +98,7 @@ func main() {
     go func() {
       err := runner.Run()
       if err != nil {
-        logp.Critical("Filters runner failed: %v", err)
+        logp.Err("Filters runner failed: %v", err)
         // shutting doen
       }
     }()
@@ -118,7 +114,7 @@ func main() {
     logp.SetToStderr(false)
   }
 
-  executor := Executor{Command: "./fake.sh", Type: "exectutor"}
+  executor := Executor{Command: "./fake.sh", Type: "exectutor", CommandTimeout: CommandTimeout * time.Second, ReadInterval: ReadInterval * time.Millisecond, ReadTimeout: ReadTimeout * time.Second}
   go executor.Execute(publisher.Publisher.Queue)
 // listener := Listener{Port: PORT, Type: "tcollector"}
 //  go listener.Listen(publisher.Publisher.Queue)
