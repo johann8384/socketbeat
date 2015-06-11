@@ -9,7 +9,6 @@ import (
   "gopkg.in/yaml.v2"
   "filters/opentsdb"
   "filters"
-  "time"
   "github.com/elastic/packetbeat/config"
   "github.com/elastic/libbeat/common"
   "github.com/elastic/libbeat/logp"
@@ -32,6 +31,7 @@ func main() {
 
   verbose := cmdLine.Bool("v", false, "Log at INFO level")
   toStderr := cmdLine.Bool("e", false, "Output to stdout instead of syslog")
+  tcpPort := cmdLine.Int("p", 4243, "Port to Listen On")
   configfile := cmdLine.String("c", "./packetbeat.yml", "Configuration file")
   publishDisabled := cmdLine.Bool("N", false, "Disable actual publishing for testing")
   debugSelectorsStr := cmdLine.String("d", "", "Enable certain debug selectors")
@@ -66,7 +66,7 @@ func main() {
   }
   logp.LogInit(logp.Priority(logLevel), "", !*toStderr, true, debugSelectors)
 
-  logp.Info("Listening: %d", PORT)
+  logp.Info("Listening: %d", tcpPort)
 
   logp.Debug("main", "Configuration %s", config.ConfigSingleton)
   logp.Info("main", "Initializing output plugins")
@@ -114,10 +114,10 @@ func main() {
     logp.SetToStderr(false)
   }
 
-  executor := Executor{Command: "./fake.sh", Type: "exectutor", CommandTimeout: CommandTimeout * time.Second, ReadInterval: ReadInterval * time.Millisecond, ReadTimeout: ReadTimeout * time.Second}
-  go executor.Execute(publisher.Publisher.Queue)
-// listener := Listener{Port: PORT, Type: "tcollector"}
-//  go listener.Listen(publisher.Publisher.Queue)
+  //executor := Executor{Command: "./fake.sh", Type: "exectutor", CommandTimeout: CommandTimeout * time.Second, ReadInterval: ReadInterval * time.Millisecond, ReadTimeout: ReadTimeout * time.Second}
+  //go executor.Execute(publisher.Publisher.Queue)
+  listener := Listener{Port: *tcpPort, Type: "tcollector"}
+  go listener.Listen(publisher.Publisher.Queue)
   for {
     event := <-afterInputsQueue
     logp.Info("Event: %v", event)
